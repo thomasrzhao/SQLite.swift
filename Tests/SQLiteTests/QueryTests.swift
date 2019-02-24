@@ -257,6 +257,16 @@ class QueryTests : XCTestCase {
         )
     }
 
+    func test_insert_on_conflict_encodable() throws {
+        let emails = Table("emails")
+        let value = TestCodable(int: 1, string: "2", bool: true, float: 3, double: 4, date: Date(timeIntervalSince1970: 0), optional: nil, sub: nil)
+        let insert = try emails.insert(or: .replace, value)
+        AssertSQL(
+            "INSERT OR REPLACE INTO \"emails\" (\"int\", \"string\", \"bool\", \"float\", \"double\", \"date\") VALUES (1, '2', 1, 3.0, 4.0, '1970-01-01T00:00:00.000')",
+            insert
+        )
+    }
+
     func test_insert_encodable_with_nested_encodable() throws {
         let emails = Table("emails")
         let value1 = TestCodable(int: 1, string: "2", bool: true, float: 3, double: 4, date: Date(timeIntervalSince1970: 0), optional: nil, sub: nil)
