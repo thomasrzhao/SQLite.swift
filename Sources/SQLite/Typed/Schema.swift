@@ -69,6 +69,14 @@ extension Table {
     public func addColumn<V : Value>(_ name: Expression<V>, check: Expression<Bool?>, defaultValue: V) -> String {
         return addColumn(definition(name, V.declaredDatatype, nil, false, false, check, defaultValue, nil, nil))
     }
+    
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool>? = nil, defaultValue: V) -> String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, defaultValue, nil, nil))
+    }
+
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool?>, defaultValue: V) -> String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, defaultValue, nil, nil))
+    }
 
     public func addColumn<V : Value>(_ name: Expression<V?>, check: Expression<Bool>? = nil, defaultValue: V? = nil) -> String {
         return addColumn(definition(name, V.declaredDatatype, nil, true, false, check, defaultValue, nil, nil))
@@ -76,6 +84,14 @@ extension Table {
 
     public func addColumn<V : Value>(_ name: Expression<V?>, check: Expression<Bool?>, defaultValue: V? = nil) -> String {
         return addColumn(definition(name, V.declaredDatatype, nil, true, false, check, defaultValue, nil, nil))
+    }
+    
+    public func addColumn<V : Value>(_ name: Expression<V?>, unique: Bool = false, check: Expression<Bool>? = nil, defaultValue: V? = nil) -> String {
+        return addColumn(definition(name, V.declaredDatatype, nil, true, unique, check, defaultValue, nil, nil))
+    }
+
+    public func addColumn<V : Value>(_ name: Expression<V?>, unique: Bool = false, check: Expression<Bool?>, defaultValue: V? = nil) -> String {
+        return addColumn(definition(name, V.declaredDatatype, nil, true, unique, check, defaultValue, nil, nil))
     }
 
     public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool>? = nil, references table: QueryType, _ other: Expression<V>) -> String where V.Datatype == Int64 {
@@ -97,18 +113,61 @@ extension Table {
     public func addColumn<V : Value>(_ name: Expression<V>, check: Expression<Bool>? = nil, defaultValue: V, collate: Collation) -> String where V.Datatype == String {
         return addColumn(definition(name, V.declaredDatatype, nil, false, false, check, defaultValue, nil, collate))
     }
+    
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool>? = nil, defaultValue: V, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, defaultValue, nil, collate))
+    }
 
     public func addColumn<V : Value>(_ name: Expression<V>, check: Expression<Bool?>, defaultValue: V, collate: Collation) -> String where V.Datatype == String {
         return addColumn(definition(name, V.declaredDatatype, nil, false, false, check, defaultValue, nil, collate))
+    }
+    
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool?>, defaultValue: V, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, defaultValue, nil, collate))
     }
 
     public func addColumn<V : Value>(_ name: Expression<V?>, check: Expression<Bool>? = nil, defaultValue: V? = nil, collate: Collation) -> String where V.Datatype == String {
         return addColumn(definition(name, V.declaredDatatype, nil, true, false, check, defaultValue, nil, collate))
     }
 
+    public func addColumn<V : Value>(_ name: Expression<V?>, unique: Bool = false, check: Expression<Bool>? = nil, defaultValue: V? = nil, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, true, unique, check, defaultValue, nil, collate))
+    }
+
     public func addColumn<V : Value>(_ name: Expression<V?>, check: Expression<Bool?>, defaultValue: V? = nil, collate: Collation) -> String where V.Datatype == String {
         return addColumn(definition(name, V.declaredDatatype, nil, true, false, check, defaultValue, nil, collate))
     }
+
+    public func addColumn<V : Value>(_ name: Expression<V?>, unique: Bool = false, check: Expression<Bool?>, defaultValue: V? = nil, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, true, unique, check, defaultValue, nil, collate))
+    }
+    
+    
+    // Only safe for empty tables
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool>? = nil) -> String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, 0, nil, nil))
+    }
+
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool?>) -> String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, 0, nil, nil))
+    }
+
+    public func addColumn<V : Value>(_ name: Expression<V>, check: Expression<Bool>? = nil, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, false, check, 0, nil, collate))
+    }
+    
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool>? = nil, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, 0, nil, collate))
+    }
+
+    public func addColumn<V : Value>(_ name: Expression<V>, check: Expression<Bool?>, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, false, check, 0, nil, collate))
+    }
+    
+    public func addColumn<V : Value>(_ name: Expression<V>, unique: Bool = false, check: Expression<Bool?>, collate: Collation) -> String where V.Datatype == String {
+        return addColumn(definition(name, V.declaredDatatype, nil, false, unique, check, 0, nil, collate))
+    }
+
 
     fileprivate func addColumn(_ expression: Expressible) -> String {
         return " ".join([
