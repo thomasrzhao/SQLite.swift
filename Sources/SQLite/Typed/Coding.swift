@@ -127,6 +127,55 @@ extension Row {
     }
 }
 
+public protocol IntSQLiteRawRepresentable {
+    var intRawValue: Int { get }
+    init?(intRawValue: Int)
+}
+
+public protocol BoolSQLiteRawRepresentable {
+    var boolRawValue: Bool { get }
+    init?(boolRawValue: Bool)
+}
+
+public protocol FloatSQLiteRawRepresentable {
+    var floatRawValue: Float { get }
+    init?(floatRawValue: Float)
+}
+
+public protocol DoubleSQLiteRawRepresentable {
+    var doubleRawValue: Double { get }
+    init?(doubleRawValue: Double)
+}
+
+public protocol StringSQLiteRawRepresentable {
+    var stringRawValue: String { get }
+    init?(stringRawValue: String)
+}
+
+public extension IntSQLiteRawRepresentable where Self: RawRepresentable, Self.RawValue == Int {
+    var intRawValue: Int { return rawValue }
+    init?(intRawValue: Int) {
+        self.init(rawValue: intRawValue)
+    }
+}
+
+public extension BoolSQLiteRawRepresentable where Self: RawRepresentable, Self.RawValue == Bool {
+    var boolRawValue: Bool { return rawValue }
+}
+
+public extension FloatSQLiteRawRepresentable where Self: RawRepresentable, Self.RawValue == Float {
+    var floatRawValue: Float { return rawValue }
+}
+
+public extension DoubleSQLiteRawRepresentable where Self: RawRepresentable, Self.RawValue == Double {
+    var doubleRawValue: Double { return rawValue }
+}
+
+public extension StringSQLiteRawRepresentable where Self: RawRepresentable, Self.RawValue == String {
+    var stringRawValue: String { return rawValue }
+}
+
+
 /// Generates a list of settings for an Encodable object
 fileprivate class SQLiteEncoder: Encoder {
     class SQLiteKeyedEncodingContainer<MyKey: CodingKey>: KeyedEncodingContainerProtocol {
@@ -178,13 +227,78 @@ fileprivate class SQLiteEncoder: Encoder {
             else if let date = value as? Date {
                 self.encoder.setters.append(Expression(key.stringValue) <- date.datatypeValue)
             }
+            else if let rawInt = value as? IntSQLiteRawRepresentable {
+                self.encoder.setters.append(Expression(key.stringValue) <- rawInt.intRawValue)
+            }
+            else if let rawBool = value as? BoolSQLiteRawRepresentable {
+                self.encoder.setters.append(Expression(key.stringValue) <- rawBool.boolRawValue)
+            }
+            else if let rawFloat = value as? FloatSQLiteRawRepresentable {
+                self.encoder.setters.append(Expression(key.stringValue) <- Double(rawFloat.floatRawValue))
+            }
+            else if let rawDouble = value as? DoubleSQLiteRawRepresentable {
+                self.encoder.setters.append(Expression(key.stringValue) <- rawDouble.doubleRawValue)
+            }
+            else if let rawString = value as? StringSQLiteRawRepresentable {
+                self.encoder.setters.append(Expression(key.stringValue) <- rawString.stringRawValue)
+            }
             else {
                 let encoded = try JSONEncoder().encode(value)
                 let string = String(data: encoded, encoding: .utf8)
                 self.encoder.setters.append(Expression(key.stringValue) <- string)
             }
         }
+        
+        func encodeIfPresent(_ value: Int?, forKey key: MyKey) throws {
+            guard let value = value else {
+                try encodeNil(forKey: key)
+                return
+            }
+            try encode(value, forKey: key)
+        }
+        
+        func encodeIfPresent(_ value: Bool?, forKey key: MyKey) throws {
+            guard let value = value else {
+                try encodeNil(forKey: key)
+                return
+            }
+            try encode(value, forKey: key)
+        }
 
+        
+        func encodeIfPresent(_ value: Float?, forKey key: MyKey) throws {
+            guard let value = value else {
+                try encodeNil(forKey: key)
+                return
+            }
+            try encode(value, forKey: key)
+        }
+
+        
+        func encodeIfPresent(_ value: Double?, forKey key: MyKey) throws {
+            guard let value = value else {
+                try encodeNil(forKey: key)
+                return
+            }
+            try encode(value, forKey: key)
+        }
+        
+        func encodeIfPresent(_ value: String?, forKey key: MyKey) throws {
+            guard let value = value else {
+                try encodeNil(forKey: key)
+                return
+            }
+            try encode(value, forKey: key)
+        }
+
+        func encodeIfPresent<T>(_ value: T?, forKey key: MyKey) throws where T : Encodable {
+            guard let value = value else {
+                try encodeNil(forKey: key)
+                return
+            }
+            try encode(value, forKey: key)
+        }
+        
         func encode(_ value: Int8, forKey key: Key) throws {
             throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: self.codingPath, debugDescription: "encoding an Int8 is not supported"))
         }
@@ -330,6 +444,48 @@ fileprivate class SQLiteDecoder : Decoder {
         func decode(_ type: String.Type, forKey key: Key) throws -> String {
             return try self.row.get(Expression(key.stringValue))
         }
+        
+        func decodeIfPresent(_ type: Int.Type, forKey key: MyKey) throws -> Int? {
+            if self.contains(key) {
+                return try decode(type, forKey: key)
+            }
+            return nil
+        }
+
+        func decodeIfPresent(_ type: Bool.Type, forKey key: MyKey) throws -> Bool? {
+            if self.contains(key) {
+                return try decode(type, forKey: key)
+            }
+            return nil
+        }
+
+        func decodeIfPresent(_ type: Float.Type, forKey key: MyKey) throws -> Float? {
+            if self.contains(key) {
+                return try decode(type, forKey: key)
+            }
+            return nil
+        }
+
+        func decodeIfPresent(_ type: Double.Type, forKey key: MyKey) throws -> Double? {
+            if self.contains(key) {
+                return try decode(type, forKey: key)
+            }
+            return nil
+        }
+
+        func decodeIfPresent(_ type: String.Type, forKey key: MyKey) throws -> String? {
+            if self.contains(key) {
+                return try decode(type, forKey: key)
+            }
+            return nil
+        }
+
+        func decodeIfPresent<T>(_ type: T.Type, forKey key: MyKey) throws -> T? where T : Decodable {
+            if self.contains(key) {
+                return try decode(type, forKey: key)
+            }
+            return nil
+        }
 
         func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T: Swift.Decodable {
             if type == Data.self {
@@ -339,6 +495,41 @@ fileprivate class SQLiteDecoder : Decoder {
             else if type == Date.self {
                 let date = try self.row.get(Expression<Date>(key.stringValue))
                 return date as! T
+            }
+            else if let t = type as? IntSQLiteRawRepresentable.Type {
+                let int = try self.row.get(Expression<Int>(key.stringValue))
+                guard let result = t.init(intRawValue: int) as? T else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))
+                }
+                return result
+            }
+            else if let t = type as? BoolSQLiteRawRepresentable.Type {
+                let bool = try self.row.get(Expression<Bool>(key.stringValue))
+                guard let result = t.init(boolRawValue: bool) as? T else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))
+                }
+                return result
+            }
+            else if let t = type as? FloatSQLiteRawRepresentable.Type {
+                let double = try self.row.get(Expression<Double>(key.stringValue))
+                guard let result = t.init(floatRawValue: Float(double)) as? T else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))
+                }
+                return result
+            }
+            else if let t = type as? DoubleSQLiteRawRepresentable.Type {
+                let double = try self.row.get(Expression<Double>(key.stringValue))
+                guard let result = t.init(doubleRawValue: double) as? T else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))
+                }
+                return result
+            }
+            else if let t = type as? StringSQLiteRawRepresentable.Type {
+                let string = try self.row.get(Expression<String>(key.stringValue))
+                guard let result = t.init(stringRawValue: string) as? T else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))
+                }
+                return result
             }
             guard let JSONString = try self.row.get(Expression<String?>(key.stringValue)) else {
                 throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))
