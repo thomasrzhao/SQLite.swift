@@ -45,6 +45,49 @@ extension QueryType {
         return self.insert(encoder.setters + otherSetters)
     }
 
+    /// Creates an `INSERT` statement by encoding the given object
+    /// This method converts any custom nested types to JSON data and does not handle any sort
+    /// of object relationships. If you want to support relationships between objects you will
+    /// have to provide your own Encodable implementations that encode the correct ids.
+    ///
+    /// - Parameters:
+    ///   - onConflict: What to do if row already exists
+    ///
+    ///   - encodable: An encodable object to insert
+    ///
+    ///   - userInfo: User info to be passed to encoder
+    ///
+    ///   - otherSetters: Any other setters to include in the insert
+    ///
+    /// - Returns: An `INSERT` statement fort the encodable object
+    public func insert(or onConflict: OnConflict, _ encodable: Encodable, userInfo: [CodingUserInfoKey:Any] = [:], otherSetters: [Setter] = []) throws -> Insert {
+        let encoder = SQLiteEncoder(userInfo: userInfo)
+        try encodable.encode(to: encoder)
+        return self.insert(or: onConflict, encoder.setters + otherSetters)
+    }
+
+    /// Creates an `INSERT ON CONFLICT DO UPDATE` statement, aka upsert, by encoding the given object
+    /// This method converts any custom nested types to JSON data and does not handle any sort
+    /// of object relationships. If you want to support relationships between objects you will
+    /// have to provide your own Encodable implementations that encode the correct ids.
+    ///
+    /// - Parameters:
+    ///
+    ///   - encodable: An encodable object to insert
+    ///
+    ///   - userInfo: User info to be passed to encoder
+    ///
+    ///   - otherSetters: Any other setters to include in the insert
+    ///
+    ///   - onConflictOf: The column that if conflicts should trigger an update instead of insert.
+    ///
+    /// - Returns: An `INSERT` statement fort the encodable object
+    public func upsert(_ encodable: Encodable, userInfo: [CodingUserInfoKey:Any] = [:], otherSetters: [Setter] = [], onConflictOf conflicting: Expressible) throws -> Insert {
+        let encoder = SQLiteEncoder(userInfo: userInfo)
+        try encodable.encode(to: encoder)
+        return self.upsert(encoder.setters + otherSetters, onConflictOf: conflicting)
+    }
+
     /// Creates an `UPDATE` statement by encoding the given object
     /// This method converts any custom nested types to JSON data and does not handle any sort
     /// of object relationships. If you want to support relationships between objects you will
@@ -131,6 +174,9 @@ fileprivate class SQLiteEncoder: Encoder {
         func encode<T>(_ value: T, forKey key: Key) throws where T : Swift.Encodable {
             if let data = value as? Data {
                 self.encoder.setters.append(Expression(key.stringValue) <- data)
+            }
+            else if let date = value as? Date {
+                self.encoder.setters.append(Expression(key.stringValue) <- date.datatypeValue)
             }
             else {
                 let encoded = try JSONEncoder().encode(value)
@@ -289,6 +335,10 @@ fileprivate class SQLiteDecoder : Decoder {
             if type == Data.self {
                 let data = try self.row.get(Expression<Data>(key.stringValue))
                 return data as! T
+            }
+            else if type == Date.self {
+                let date = try self.row.get(Expression<Date>(key.stringValue))
+                return date as! T
             }
             guard let JSONString = try self.row.get(Expression<String?>(key.stringValue)) else {
                 throw DecodingError.typeMismatch(type, DecodingError.Context(codingPath: self.codingPath, debugDescription: "an unsupported type was found"))

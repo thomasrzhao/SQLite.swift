@@ -35,6 +35,7 @@
       - [Sorting Rows](#sorting-rows)
       - [Limiting and Paging Results](#limiting-and-paging-results)
       - [Aggregation](#aggregation)
+  - [Upserting Rows](#upserting-rows)
   - [Updating Rows](#updating-rows)
   - [Deleting Rows](#deleting-rows)
   - [Transactions and Savepoints](#transactions-and-savepoints)
@@ -1098,6 +1099,33 @@ let count = try db.scalar(users.filter(name != nil).count)
 > // SELECT count(DISTINCT "name") FROM "users"
 > ```
 
+## Upserting Rows
+
+We can upsert rows into a table by calling a [query’s](#queries) `upsert`
+function with a list of [setters](#setters)—typically [typed column
+expressions](#expressions) and values (which can also be expressions)—each
+joined by the `<-` operator. Upserting is like inserting, except if there is a 
+conflict on the specified column value, SQLite will perform an update on the row instead.
+
+```swift
+try db.run(users.upsert(email <- "alice@mac.com", name <- "Alice"), onConflictOf: email)
+// INSERT INTO "users" ("email", "name") VALUES ('alice@mac.com', 'Alice') ON CONFLICT (\"email\") DO UPDATE SET \"name\" = \"excluded\".\"name\"
+```
+
+The `upsert` function, when run successfully, returns an `Int64` representing
+the inserted row’s [`ROWID`][ROWID].
+
+```swift
+do {
+    let rowid = try db.run(users.upsert(email <- "alice@mac.com", name <- "Alice", onConflictOf: email))
+    print("inserted id: \(rowid)")
+} catch {
+    print("insertion failed: \(error)")
+}
+```
+
+The [`insert`](#inserting-rows), [`update`](#updating-rows), and [`delete`](#deleting-rows) functions
+follow similar patterns.
 
 ## Updating Rows
 
@@ -1557,7 +1585,7 @@ Both of the above methods also have the following optional parameter:
 There are a few restrictions on using Codable types:
 
 - The encodable and decodable objects can only use the following types:
-    - Int, Bool, Float, Double, String
+    - Int, Bool, Float, Double, String, Date
     - Nested Codable types that will be encoded as JSON to a single column
 - These methods will not handle object relationships for you. You must write
   your own Codable and Decodable implementations if you wish to support this.
