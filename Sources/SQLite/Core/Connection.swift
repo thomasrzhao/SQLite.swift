@@ -102,10 +102,12 @@ public final class Connection {
     ///     Default: `false`.
     ///
     /// - Returns: A new database connection.
-    public init(_ location: Location = .inMemory, readonly: Bool = false) throws {
+    public init(_ location: Location = .inMemory, readonly: Bool = false, queue: DispatchQueue? = nil) throws {
+        self.queue = DispatchQueue(label: "SQLite.Database", target: queue)
+
         let flags = readonly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE
         try check(sqlite3_open_v2(location.description, &_handle, flags | SQLITE_OPEN_FULLMUTEX, nil))
-        queue.setSpecific(key: Connection.queueKey, value: queueContext)
+        self.queue.setSpecific(key: Connection.queueKey, value: queueContext)
     }
 
     /// Initializes a new connection to a database.
@@ -122,8 +124,8 @@ public final class Connection {
     /// - Throws: `Result.Error` iff a connection cannot be established.
     ///
     /// - Returns: A new database connection.
-    public convenience init(_ filename: String, readonly: Bool = false) throws {
-        try self.init(.uri(filename), readonly: readonly)
+    public convenience init(_ filename: String, readonly: Bool = false, queue: DispatchQueue? = nil) throws {
+        try self.init(.uri(filename), readonly: readonly, queue: queue)
     }
 
     deinit {
@@ -646,7 +648,7 @@ public final class Connection {
         throw error
     }
 
-    fileprivate var queue = DispatchQueue(label: "SQLite.Database", attributes: [])
+    fileprivate let queue: DispatchQueue
 
     fileprivate static let queueKey = DispatchSpecificKey<Int>()
 
