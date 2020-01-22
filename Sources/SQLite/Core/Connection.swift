@@ -103,7 +103,7 @@ public final class Connection {
     ///
     /// - Returns: A new database connection.
     public init(_ location: Location = .inMemory, readonly: Bool = false, queue: DispatchQueue? = nil) throws {
-        self.queue = DispatchQueue(label: "SQLite.Database", target: queue)
+        self.queue = queue ?? DispatchQueue(label: "SQLite.Database")
 
         let flags = readonly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE
         try check(sqlite3_open_v2(location.description, &_handle, flags | SQLITE_OPEN_FULLMUTEX, nil))
