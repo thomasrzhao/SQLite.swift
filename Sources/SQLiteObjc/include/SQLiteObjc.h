@@ -23,6 +23,8 @@
 //
 
 @import Foundation;
+@import Dispatch;
+
 #if defined(SQLITE_SWIFT_STANDALONE)
 @import sqlite3;
 #else
@@ -32,5 +34,7 @@
 NS_ASSUME_NONNULL_BEGIN
 typedef NSString * _Nullable (^_SQLiteTokenizerNextCallback)(const char *input, int *inputOffset, int *inputLength);
 int _SQLiteRegisterTokenizer(sqlite3 *db, const char *module, const char *tokenizer, _Nullable _SQLiteTokenizerNextCallback callback);
+
+void _SQLite_dispatch_async_and_wait(dispatch_queue_t queue, __attribute__((__noescape__)) dispatch_block_t block);
 NS_ASSUME_NONNULL_END
 

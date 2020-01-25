@@ -37,6 +37,8 @@ import SQLite3
 /// A connection to SQLite.
 public final class Connection {
 
+    public static let defaultQueueName = "SQLite.Database"
+    
     /// The location of a SQLite database.
     public enum Location {
 
@@ -102,12 +104,21 @@ public final class Connection {
     ///     Default: `false`.
     ///
     /// - Returns: A new database connection.
-    public init(_ location: Location = .inMemory, readonly: Bool = false, queue: DispatchQueue? = nil) throws {
-        self.queue = queue ?? DispatchQueue(label: "SQLite.Database")
-
-        let flags = readonly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE
+    
+    public let location: Location
+    public init(_ location: Location = .inMemory, readonly: Bool = false, createIfNotExists: Bool = true, queue: DispatchQueue? = DispatchQueue(label: Connection.defaultQueueName)) throws {
+        self.queue = queue
+        self.location = location
+        let flags: Int32
+        switch (readonly, createIfNotExists) {
+        case (true, _): flags = SQLITE_OPEN_READONLY
+        case (false, false): flags = SQLITE_OPEN_READWRITE
+        case (false, true): flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+        }
         try check(sqlite3_open_v2(location.description, &_handle, flags | SQLITE_OPEN_FULLMUTEX, nil))
-        self.queue.setSpecific(key: Connection.queueKey, value: queueContext)
+        if let queue = queue {
+            queue.setSpecific(key: queueKey, value: ())
+        }
     }
 
     /// Initializes a new connection to a database.
@@ -124,12 +135,13 @@ public final class Connection {
     /// - Throws: `Result.Error` iff a connection cannot be established.
     ///
     /// - Returns: A new database connection.
-    public convenience init(_ filename: String, readonly: Bool = false, queue: DispatchQueue? = nil) throws {
-        try self.init(.uri(filename), readonly: readonly, queue: queue)
+    public convenience init(_ filename: String, readonly: Bool = false, createIfNotExists: Bool = true, queue: DispatchQueue? = DispatchQueue(label: Connection.defaultQueueName)) throws {
+        try self.init(.uri(filename), readonly: readonly, createIfNotExists: createIfNotExists, queue: queue)
     }
 
     deinit {
         sqlite3_close(handle)
+        queueKey = nil
     }
 
     // MARK: -
@@ -632,11 +644,26 @@ public final class Connection {
 
     // MARK: - Error Handling
 
-    func sync<T>(_ block: () throws -> T) rethrows -> T {
-        if DispatchQueue.getSpecific(key: Connection.queueKey) == queueContext {
+    func sync<T>(_ block: () throws -> T) throws -> T {
+        guard let queue = queue else {
+            return try block()
+        }
+        if let _ = DispatchQueue.getSpecific(key: queueKey) {
             return try block()
         } else {
-            return try queue.sync(execute: block)
+            var t: T!
+            var e: Error?
+            _SQLite_dispatch_async_and_wait(queue) {
+                do {
+                    t = try block()
+                } catch {
+                    e = error
+                }
+            }
+            if let e = e {
+                throw e
+            }
+            return t
         }
     }
 
@@ -648,12 +675,9 @@ public final class Connection {
         throw error
     }
 
-    fileprivate let queue: DispatchQueue
+    fileprivate let queue: DispatchQueue?
 
-    fileprivate static let queueKey = DispatchSpecificKey<Int>()
-
-    fileprivate lazy var queueContext: Int = unsafeBitCast(self, to: Int.self)
-
+    fileprivate var queueKey: DispatchSpecificKey<Void>! = DispatchSpecificKey<Void>()
 }
 
 extension Connection : CustomStringConvertible {

@@ -20,16 +20,35 @@ extension Connection {
     ///
     ///            Alternatively, it is possible to specify an exact byte sequence using a blob literal.
     ///            With this method, it is the calling application's responsibility to ensure that the data
-    ///            provided is a 64 character hex string, which will be converted directly to 32 bytes (256 bits)
-    ///            of key data.
-    ///            e.g. x'2DD29CA851E7B56E4697B0E1F08507293D761A05CE4D1B628663F411A8086D99'
+    ///            provided contains 32 bytes (256 bits) of key data, or 48 bytes (384 bits) if it includes the salt as well.
     /// @param db name of the database, defaults to 'main'
     public func key(_ key: String, db: String = "main") throws {
         try _key_v2(db: db, keyPointer: key, keySize: key.utf8.count)
     }
 
     public func key(_ key: Blob, db: String = "main") throws {
-        try _key_v2(db: db, keyPointer: key.bytes, keySize: key.bytes.count)
+        try key.description.utf8CString.withUnsafeBytes { (ptr) in
+            let bound = ptr.bindMemory(to: UInt8.self)
+            try _key_v2(db: db, keyPointer: bound.baseAddress!, keySize: bound.count - 1)
+        }
+    }
+    
+    public func key(_ key: ContiguousBytes, db: String = "main") throws {
+        try key.withUnsafeBytes { ptr in
+            var chars = [UInt8]()
+            chars += "x'".utf8CString.dropLast().map { UInt8($0) }
+            for byte in ptr {
+                if byte < 16 {
+                    chars += "0".utf8CString.dropLast().map { UInt8($0) }
+                }
+                chars += String(byte, radix: 16, uppercase: false).utf8CString.dropLast().map { UInt8($0) }
+            }
+            chars += "'".utf8CString.dropLast().map { UInt8($0) }
+            try chars.withUnsafeBufferPointer { (ptr) in
+                try _key_v2(db: db, keyPointer: ptr.baseAddress!, keySize: ptr.count)
+            }
+            chars.resetBytes(in: chars.startIndex..<chars.endIndex)
+        }
     }
 
 
