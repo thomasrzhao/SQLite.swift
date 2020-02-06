@@ -44,10 +44,15 @@ extension Connection {
                 chars += String(byte, radix: 16, uppercase: false).utf8CString.dropLast().map { UInt8($0) }
             }
             chars += "'".utf8CString.dropLast().map { UInt8($0) }
-            try chars.withUnsafeBufferPointer { (ptr) in
+            try chars.withUnsafeBufferPointer { ptr in
                 try _key_v2(db: db, keyPointer: ptr.baseAddress!, keySize: ptr.count)
             }
-            chars.resetBytes(in: chars.startIndex..<chars.endIndex)
+            let errno = chars.withUnsafeMutableBytes { ptr in
+                memset_s(ptr.baseAddress!, ptr.count, 0, ptr.count)
+            }
+            guard errno == 0 else {
+                throw NSError(domain: POSIXError.errorDomain, code: Int(errno))
+            }
         }
     }
 
