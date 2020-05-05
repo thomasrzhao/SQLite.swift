@@ -138,7 +138,7 @@ int _SQLiteRegisterTokenizer(sqlite3 *db, const char * moduleName, const char * 
 }
 
 void _SQLite_dispatch_async_and_wait(dispatch_queue_t queue, __attribute__((__noescape__)) dispatch_block_t block) {
-    if (@available(iOS 12.0, *)) {
+    if (@available(macOS 10.14, iOS 12.0, *)) {
         dispatch_async_and_wait(queue, block);
     } else {
         dispatch_sync(queue, block);
