@@ -33,6 +33,9 @@ import CSQLite
 #else
 import SQLite3
 #endif
+#if SWIFT_PACKAGE
+import SQLiteObjc
+#endif
 
 /// A connection to SQLite.
 public final class Connection {
